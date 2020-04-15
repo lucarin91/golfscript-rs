@@ -1,4 +1,3 @@
-#![feature(question_mark)]
 #![allow(dead_code)]
 
 extern crate itertools;
@@ -142,8 +141,8 @@ fn lex_item(mut chars: &mut CharStream) -> Option<Result<Item, GSError>> {
                     }
                 }
 
-                string.replace("\\\\", "\\");
-                string.replace("\\\"", "\"");
+                let string = string.replace("\\\\", "\\")
+                                   .replace("\\\"", "\"");
                 Item::Str(string)
             }
 
@@ -269,7 +268,7 @@ impl Interpreter {
         match self.stack.pop() {
             Some(value) => {
                 // Resize all markers that are beyond the edge of the stack
-                for mut marker in self.marker_stack.iter_mut() {
+                for marker in self.marker_stack.iter_mut() {
                     if *marker > self.stack.len() {
                         *marker = self.stack.len();
                     }
