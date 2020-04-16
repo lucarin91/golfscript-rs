@@ -3,6 +3,7 @@
 extern crate itertools;
 extern crate rand;
 
+use std::char;
 use rand::distributions::{IndependentSample, Range};
 use std::{fmt, str, iter};
 use itertools::Itertools;
@@ -66,9 +67,7 @@ impl Item {
     fn upcast_to_array(self) -> Item {
         match self {
             x @ Item::Num(_) => Item::Array(vec![x].into_boxed_slice()),
-
             x @ Item::Array(_) => x,
-
             _ => panic!("upcast_to_array only accepts num, array")
         }
     }
@@ -87,7 +86,23 @@ impl Item {
     /// ### Str
     /// Nop
     fn upcast_to_string(self) -> Item {
-        unimplemented!()
+        match self {
+            Item::Num(val) => Item::Str(val.to_string()),
+            Item::Array(items) => Item::Str(items.into_iter().map(|item| {
+                if let Item::Num(val) = item {
+                   char::from_u32(*val as u32).unwrap().to_string()
+                } else {
+                    // TODO: can the clone be removed?
+                    if let Item::Str(val) = item.clone().upcast_to_string() {
+                        val
+                    } else {
+                        panic!("upcast_to_string only accepts Num, Array, String")
+                    }
+                }
+                }).join("")),
+            x @ Item::Str(_) => x,
+            _ => panic!("upcast_to_string only accepts Num, Array, String")
+        }
     }
 
     /// Upcast the specified `Item` into a `Item::Block`
@@ -96,13 +111,43 @@ impl Item {
     ///
     /// ### Num
     fn upcast_to_block(self) -> Item {
-        unimplemented!()
+        match self {
+            x @ Item::Num(_) => Item::Block(vec![x].into_boxed_slice()),
+            Item::Array(items) => {
+                let mut res: Vec<Item> = Vec::new();
+                for item in items.into_iter() {
+                    if let Item::Block(val) = item.clone().upcast_to_block() {
+                        for i in val.into_iter() {
+                            // TODO: can the clone be removed?
+                            res.push(i.clone());
+                        }
+                    } else {
+                        panic!("upcast_to_block only accepts Num, Array, String, Block")
+                    }
+                } 
+                Item::Block(res.into_boxed_slice())
+            },
+            x @ Item::Str(_) => Item::Block(vec![x].into_boxed_slice()),
+            x @ Item::Block(_) => x,
+            _ => panic!("upcast_to_block only accepts Num, Array, String, Block")
+        }
     }
 }
 
 // Coerce the specified items a similar type.
 fn coerce((x, y): (Item, Item)) -> (Item, Item) {
-    (x, y)
+    match (x, y) {
+        (x, y @ Item::Block(_)) | (x @ Item::Block(_), y)
+            => (x.upcast_to_block(), y.upcast_to_block()),
+
+        (x, y @ Item::Str(_)) | (x @ Item::Str(_), y)
+            => (x.upcast_to_string(), y.upcast_to_string()),
+        
+        (x, y @ Item::Array(_)) | (x @ Item::Array(_), y)
+            => (x.upcast_to_array(), y.upcast_to_array()),
+
+        (x, y) => (x, y)
+    }
 }
 
 fn lex_item(mut chars: &mut CharStream) -> Option<Result<Item, GSError>> {
@@ -1311,3 +1356,5 @@ mod tests {
         assert_eq!(eval("{-1*-}:plus;3 2 plus"), [Num(5)])
     }
 }
+
+// TODO: add coercion tests
