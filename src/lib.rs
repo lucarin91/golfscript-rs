@@ -6,6 +6,7 @@ extern crate rand;
 use rand::distributions::{IndependentSample, Range};
 use std::{fmt, str, iter};
 use itertools::Itertools;
+use std::collections::HashMap;
 
 type CharStream<'a> = iter::Peekable<str::Chars<'a>>;
 
@@ -21,6 +22,8 @@ type GSErr = Result<(), GSError>;
 #[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd)]
 pub enum Item {
     Op(char),
+    Var(String),
+    Assign(String),
     Num(i64),
     Str(String),
     Array(Box<[Item]>),
@@ -30,22 +33,22 @@ pub enum Item {
 /// Allow `to_string` conversion for `Item`'s
 impl fmt::Display for Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Item::Num(ref x) => write!(f, "{}", x),
-            Item::Str(ref x) => write!(f, "\"{}\"", x),
+        match self {
             Item::Op(x) => write!(f, "{}", x),
-
+            Item::Var(x) => write!(f, "{}", x),
+            Item::Num(ref x) => write!(f, "{}", x),
+            Item::Str(ref x) => write!(f, "\"{}\"", x.replace("\n", "\\n")),
             Item::Array(ref x) => {
                 let _ = write!(f, "[")?;
                 let _ = write!(f, "{}", x.iter().format_default(" "))?;
                 write!(f, "]")
             }
-
             Item::Block(ref x) => {
                 let _ = write!(f, "{{")?;
                 let _ = write!(f, "{}", x.iter().format_default(" "))?;
                 write!(f, "}}")
             }
+            Item::Assign(_) => write!(f, "")
         }
     }
 }
@@ -220,7 +223,41 @@ fn lex_item(mut chars: &mut CharStream) -> Option<Result<Item, GSError>> {
             }
 
             Some(ch) if ch.is_whitespace() => continue,
-            Some(ch) => Item::Op(ch),
+            Some(':') => {
+                let mut string = String::new();
+                // TODO: create a function for this
+                loop {
+                    match chars.peek() {
+                        Some(ch) if ch.is_alphanumeric() || *ch == '_' => {
+                            string.push(*ch);
+                            chars.next();
+                        },
+                        Some(_) | None => break
+                    }
+                }
+                if string.is_empty() {
+                    return Some(Err(GSError::Parse("empty variable name after :".to_string())))
+                }
+                Item::Assign(string)
+            },
+            Some(ch @ '+') | Some(ch @ '-') | Some(ch @ '!') | Some(ch @ '@') | Some(ch @ '$')
+            | Some(ch @ '*') | Some(ch @ '/') | Some(ch @ '%') | Some(ch @ '|') | Some(ch @ '&')
+            | Some(ch @ '^') | Some(ch @ '\\') | Some(ch @ ';') | Some(ch @ '<') | Some(ch @ '>')
+            | Some(ch @ '=') | Some(ch @ '.') | Some(ch @ '?') | Some(ch @ '(') | Some(ch @ ')')
+            | Some(ch @ '[') | Some(ch @ ']') | Some(ch @ '~') | Some(ch @ '`') | Some(ch @ ',')
+                => Item::Op(ch),
+            Some(ch) => {
+                let mut string = ch.to_string();
+                // TODO: create a function for this
+                loop {
+                    match chars.next() {
+                        Some(ch) if ch.is_alphanumeric() || ch == '_' => string.push(ch),
+                        Some(_) | None => break
+                    }
+                }
+                Item::Var(string)
+            }
+
             _ => return None
         };
 
@@ -244,14 +281,17 @@ pub struct Interpreter {
     stack: Vec<Item>,
 
     /// Store all past stack markers
-    marker_stack: Vec<usize>
+    marker_stack: Vec<usize>,
+
+    variables: HashMap<String, Item>
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
             stack: Vec::new(),
-            marker_stack: Vec::new()
+            marker_stack: Vec::new(),
+            variables: HashMap::new()
         }
     }
 
@@ -285,6 +325,25 @@ impl Interpreter {
     fn pop2(&mut self) -> Result<(Item, Item), GSError> {
         // Order of execution in ',' values is defined in rust.
         Ok((self.pop()?, self.pop()?))
+    }
+
+    /// Peek last element of the stack.
+    fn peek(&mut self) -> Result<Item, GSError> {
+        match self.stack.last() {
+            Some(value) => return Ok(value.clone()),
+            None => Err(GSError::Runtime("stack underflow".to_string()))
+        }
+    }
+    
+    fn add_variable(&mut self, name: String, value: Item) {
+        self.variables.insert(name, value);
+    }
+    
+    fn get_variable(&mut self, name: &str) -> Result<Item, GSError> {
+        match self.variables.get(name) {
+            Some(value) => Ok(value.clone()),
+            None => Err(GSError::Runtime(format!("variable '{}' not founded", name)))
+        }
     }
 
     /// Execute a string, returning the stack state after execution
@@ -323,12 +382,13 @@ impl Interpreter {
                 Item::Op('~') => self.neg()?,
                 Item::Op('`') => self.backtick()?,
                 Item::Op(',') => self.array()?,
-                Item::Op('a') => self.builtin_abs()?,
-                Item::Op('i') => self.builtin_if()?,
-                Item::Op('r') => self.builtin_rand()?,
-                Item::Op('p') => self.builtin_p()?,
-                Item::Op('n') => self.builtin_n()?,
-
+                Item::Assign(name) => self.assign(name)?,
+                Item::Var(ref name) if "abs" == name.as_str() => self.builtin_abs()?,
+                Item::Var(ref name) if "if" == name.as_str() => self.builtin_if()?,
+                Item::Var(ref name) if "rand" == name.as_str() => self.builtin_rand()?,
+                Item::Var(ref name) if "print" == name.as_str() => self.builtin_print()?,
+                Item::Var(ref name) if "n" == name.as_str() => self.builtin_n()?,
+                Item::Var(name) => self.exec_variable(name.as_str())?,
                 x @ Item::Num(_) | x @ Item::Str(_) | x @ Item::Block(_) => {
                     self.push(x)
                 }
@@ -340,8 +400,29 @@ impl Interpreter {
                 }
             }
         }
+        // println!("   STACK:{:?} VARIABLE:{:?}", self.stack, self.variables);
 
         Ok(&self.stack)
+    }
+
+    fn assign(&mut self, name: String) -> GSErr {
+        let item = self.peek()?;
+        self.add_variable(name, item);
+        Ok(())
+    }
+    
+    fn exec_variable(&mut self, name: &str) -> GSErr {
+        match self.get_variable(name) {
+            Ok(value) => {
+                if let Item::Block(ref items) = value {
+                    self.exec_items(items)?;
+                } else {
+                    self.push(value)
+                }
+                Ok(())
+            }
+            Err(err) => Err(err)
+        }
     }
 
     /// +
@@ -819,7 +900,7 @@ impl Interpreter {
         Ok(())
     }
 
-    // a (abs)
+    // abs
     fn builtin_abs(&mut self) -> GSErr {
         match self.pop()? {
             Item::Num(x) => self.push(Item::Num(x.abs())),
@@ -830,7 +911,7 @@ impl Interpreter {
         Ok(())
     }
 
-    // i (if)
+    // if
     fn builtin_if(&mut self) -> GSErr {
         self.not()?; // Evaluate if top of stack is not, note this requires
                      // a reverse condition check in the following.
@@ -857,7 +938,7 @@ impl Interpreter {
         Ok(())
     }
 
-    // r (rand)
+    // rand
     fn builtin_rand(&mut self) -> GSErr {
         match self.pop()? {
             Item::Num(x) => {
@@ -882,8 +963,8 @@ impl Interpreter {
         Ok(())
     }
 
-    // p
-    fn builtin_p(&mut self) -> GSErr {
+    // print
+    fn builtin_print(&mut self) -> GSErr {
         println!("{:?}", self.pop()?);
         Ok(())
     }
@@ -1205,12 +1286,28 @@ mod tests {
     }
 
     // test if
+    #[test]
     fn builtin_if() {
-        assert_eq!(eval("1 2 3i"), [Num(2)]);
+        assert_eq!(eval("1 2 3if"), [Num(2)]);
     }
 
     // test abs
+    #[test]
     fn builtin_abs() {
-        assert_eq!(eval("-2a"), [Num(2)]);
+        assert_eq!(eval("-2abs"), [Num(2)]);
+    }
+
+    //test variable
+    #[test]
+    fn assignment(){
+        assert_eq!(eval("\"hello\":str"), [Str!("hello")]);
+        assert_eq!(eval("\"hello\":str;"), []);
+        assert_eq!(eval("\"hello\":str;str"), [Str!("hello")]);
+    }
+
+    //test variable block
+    #[test]
+    fn assignment_block(){
+        assert_eq!(eval("{-1*-}:plus;3 2 plus"), [Num(5)])
     }
 }
