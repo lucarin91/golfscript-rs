@@ -32,7 +32,7 @@ impl fmt::Display for Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Item::Num(ref x) => write!(f, "{}", x),
-            Item::Str(ref x) => write!(f, "{:?}", x),
+            Item::Str(ref x) => write!(f, "\"{}\"", x),
             Item::Op(x) => write!(f, "{}", x),
 
             Item::Array(ref x) => {

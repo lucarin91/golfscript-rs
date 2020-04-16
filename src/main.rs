@@ -10,7 +10,10 @@ fn main() {
             Ok(line) => {
                 match it.exec(&line) {
                     Ok(response) => {
-                        println!("{:?}", response);
+                        for el in response {
+                            print!("| {} ", el);
+                        }
+                        println!("|");
                         rl.add_history(line);
                     }
 
