@@ -19,6 +19,7 @@ traditional lex -> (no parse) -> execute phase.
 
 - [ ] Block Statements
 - [ ] Final builtin functions
-- [ ] Assignment functionality
+- [x] Assignment functionality
 - [ ] Full test suite
 - [ ] Transactional execution (interpreter)
+- [x] Coercion

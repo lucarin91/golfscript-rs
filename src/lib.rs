@@ -49,7 +49,7 @@ impl fmt::Display for Item {
                 let _ = write!(f, "{}", x.iter().format_default(" "))?;
                 write!(f, "}}")
             }
-            Item::Assign(_) => write!(f, "")
+            Item::Assign(x) => write!(f, ":{}", x)
         }
     }
 }
@@ -393,6 +393,7 @@ impl Interpreter {
 
     /// Execute a string, returning the stack state after execution
     pub fn exec(&mut self, input: &str) -> Result<&[Item], GSError> {
+        // TODO: should return also the variable setted
         let items = lex(&input)?;
         self.exec_items(&items)
     }
