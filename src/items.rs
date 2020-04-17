@@ -1,5 +1,6 @@
 extern crate itertools;
 
+use std::cmp::Ordering;
 use std::{char, fmt};
 
 use itertools::Itertools;
@@ -41,6 +42,20 @@ impl fmt::Display for Item {
                 write!(f, "}}")
             }
             Item::Assign(x) => write!(f, ":{}", x),
+        }
+    }
+}
+
+impl Ord for Item {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Item::Num(a), Item::Str(b)) => a.to_string().cmp(b),
+            (Item::Str(a), Item::Num(b)) => a.cmp(&b.to_string()),
+
+            (Item::Num(a), Item::Num(b)) => a.cmp(b),
+            (Item::Str(a), Item::Str(b)) => a.cmp(b),
+
+            _ => Ordering::Equal,
         }
     }
 }

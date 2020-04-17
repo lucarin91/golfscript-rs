@@ -118,7 +118,31 @@ impl Interpreter {
                 buf.sort();
                 self.push(Str(buf.into_iter().collect()))
             }
+            Array(mut items) => {
+                items.sort();
+                self.push(Array(items));
+            }
 
+            Block(ref block) => match self.pop()? {
+                Array(mut items) => {
+                    items.sort_by_key(|a| {
+                        self.push(a.clone());
+                        self.exec_items(block).unwrap();
+                        self.pop().unwrap()
+                    });
+                    self.push(Array(items));
+                }
+                Str(val) => {
+                    let mut buf: Vec<char> = val.chars().collect();
+                    buf.sort_by_key(|a| {
+                        self.push(Str(a.to_string()));
+                        self.exec_items(block).unwrap();
+                        self.pop().unwrap()
+                    });
+                    self.push(Str(buf.into_iter().collect()))
+                }
+                _ => unimplemented!(),
+            },
             _ => unimplemented!(),
         }
 

@@ -46,13 +46,13 @@ fn negate_str() {
 }
 
 #[test]
-fn negate_array() {
-    assert_eq!(eval("[1 2 3]~"), [Num(1), Num(2), Num(3)]);
+fn negate_block() {
+    assert_eq!(eval("{1 2+}~"), [Num(3)]);
 }
 
 #[test]
-fn negate_block() {
-    assert_eq!(eval("{1 2+}~"), [Num(3)]);
+fn negate_array() {
+    assert_eq!(eval("[1 2 3]~"), [Num(1), Num(2), Num(3)]);
 }
 
 // test`
@@ -62,13 +62,13 @@ fn backtick_num() {
 }
 
 #[test]
-fn backtick_str() {
-    assert_eq!(eval("\"1\"`"), [Str!("\"1\"")]);
+fn backtick_array() {
+    assert_eq!(eval("[1 [2] \"asdf\"]`"), [Str!("[1 [2] \"asdf\"]")]);
 }
 
 #[test]
-fn backtick_array() {
-    assert_eq!(eval("[1 [2] \"asdf\"]`"), [Str!("[1 [2] \"asdf\"]")]);
+fn backtick_str() {
+    assert_eq!(eval("\"1\"`"), [Str!("\"1\"")]);
 }
 
 #[test]
@@ -84,15 +84,15 @@ fn exclaim_num() {
 }
 
 #[test]
-fn exclaim_str() {
-    assert_eq!(eval("\"\"!"), [Num(1)]);
-    assert_eq!(eval("\"asdf\"!"), [Num(0)]);
-}
-
-#[test]
 fn exclaim_array() {
     assert_eq!(eval("[]!"), [Num(1)]);
     assert_eq!(eval("[1 4]!"), [Num(0)]);
+}
+
+#[test]
+fn exclaim_str() {
+    assert_eq!(eval("\"\"!"), [Num(1)]);
+    assert_eq!(eval("\"asdf\"!"), [Num(0)]);
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn exclaim_block() {
 // test@
 #[test]
 fn at() {
-    assert_eq!(eval("1 2 3 4@"), [Num(1), Num(3), Num(4), Num(2)]);
+    assert_eq!(eval("1 2 3 4 @"), [Num(1), Num(3), Num(4), Num(2)]);
 }
 
 // test#
@@ -125,6 +125,27 @@ fn dollar_num() {
 #[test]
 fn dollar_str() {
     assert_eq!(eval("\"asdf\"$"), [Str!("adfs")]);
+}
+
+#[test]
+fn dollar_array() {
+    assert_eq!(
+        eval("[5 4 3 1 2]$"),
+        [Array!([Num(1), Num(2), Num(3), Num(4), Num(5)])]
+    );
+    assert_eq!(
+        eval("[\"ccc\" \"bbb\" \"aaa\"]$"),
+        [Array!([Str!("aaa"), Str!("bbb"), Str!("ccc")])]
+    );
+}
+
+#[test]
+fn dollar_block() {
+    assert_eq!(
+        eval("[5 4 3 1 2]{-1*}$"),
+        [Array!([Num(5), Num(4), Num(3), Num(2), Num(1)])]
+    );
+    assert_eq!(eval("\"asdf\"{\"\"+}$"), [Str!("adfs")]);
 }
 
 // test+
