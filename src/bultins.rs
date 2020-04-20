@@ -161,24 +161,19 @@ impl Interpreter {
     /// *
     pub fn mul(&mut self) -> GSErr {
         match self.pop2()? {
+            // multiplication
             (Num(x), Num(y)) => self.push(Num(x * y)),
 
+            // repeat on Str Array and Block
+            (Num(y), _) | (_, Num(y)) if y < 0 => {
+                return Err(GSError::Runtime(
+                    "repeat string value is negative".to_string(),
+                ));
+            }
             (Num(y), Str(x)) | (Str(x), Num(y)) => {
-                if y < 0 {
-                    return Err(GSError::Runtime(
-                        "repeat string value is negative".to_string(),
-                    ));
-                }
                 self.push(Str(iter::repeat(x).take(y as usize).collect()))
             }
-
             (Num(y), Array(x)) | (Array(x), Num(y)) => {
-                if y < 0 {
-                    return Err(GSError::Runtime(
-                        "repeat string value is negative".to_string(),
-                    ));
-                }
-
                 self.push(Array(
                     x.iter()
                         .cloned()
@@ -186,7 +181,61 @@ impl Interpreter {
                         .take(x.len() * y as usize)
                         .collect_vec()
                         .into_boxed_slice(),
-                ))
+                ));
+            }
+            (Num(y), Block(x)) | (Block(x), Num(y)) => {
+                for _ in 0..y {
+                    self.exec_items(&x)?;
+                }
+            }
+
+            // join on Array and Str
+            (Array(x), Str(y)) | (Str(y), Array(x)) => {
+                self.push(Str(x
+                    .iter()
+                    .filter_map(|el| {
+                        if let Str(val) = el.clone().upcast_to_string() {
+                            Some(val)
+                        } else {
+                            None
+                        }
+                    })
+                    .join(y.as_str())));
+            }
+            (Array(y), Array(x)) => {
+                let mut items: Vec<Item> = Vec::new();
+                let mut x = x.iter().peekable();
+                while let Some(el) = x.next() {
+                    match el {
+                        Array(i) => items.extend_from_slice(i),
+                        el => items.push(el.clone()),
+                    }
+                    if x.peek() != None {
+                        items.extend_from_slice(&y);
+                    }
+                }
+                self.push(Array(items.into_boxed_slice()));
+            }
+            (Str(y), Str(x)) => {
+                self.push(Str(x.chars().join(&y)));
+            }
+
+            // fold on Array and Str
+            (Block(y), Array(x)) | (Array(x), Block(y)) => {
+                for el in x.iter() {
+                    self.push(el.clone());
+                }
+                for _ in 1..x.len() {
+                    self.exec_items(&y)?;
+                }
+            }
+            (Block(y), Str(x)) | (Str(x), Block(y)) => {
+                for el in x.chars() {
+                    self.push(Num(el as i64));
+                }
+                for _ in 1..x.len() {
+                    self.exec_items(&y)?;
+                }
             }
 
             _ => unimplemented!(),

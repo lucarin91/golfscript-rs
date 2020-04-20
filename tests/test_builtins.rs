@@ -210,6 +210,19 @@ fn sub_coercion() {
 #[test]
 fn mul_num() {
     assert_eq!(eval("2 4*"), [Num(8)]);
+    assert_eq!(eval("4 2*"), [Num(8)]);
+}
+
+#[test]
+fn mul_num_block() {
+    assert_eq!(eval("2 {2*} 5*"), [Num(64)]);
+    assert_eq!(eval("2 5 {2*}*"), [Num(64)]);
+}
+
+#[test]
+fn mul_num_array() {
+    assert_eq!(eval("[1 2] 2*"), [Array!([Num(1), Num(2), Num(1), Num(2)])]);
+    assert_eq!(eval("2 [1 2]*"), [Array!([Num(1), Num(2), Num(1), Num(2)])]);
 }
 
 #[test]
@@ -219,15 +232,53 @@ fn mul_num_str() {
 }
 
 #[test]
-fn mul_num_array() {
-    assert_eq!(eval("[1 2]2*"), [Array!([Num(1), Num(2), Num(1), Num(2)])]);
-    assert_eq!(eval("2[1 2]*"), [Array!([Num(1), Num(2), Num(1), Num(2)])]);
+fn mul_join_array_str() {
+    assert_eq!(eval("[1 2]\",\"*"), [Str!("1,2")]);
+    assert_eq!(eval("\",\"[1 2]*"), [Str!("1,2")]);
+    assert_eq!(
+        eval("[1 [2] [3 [4 [5]]]]\"-\"*"),
+        [Str!("1-\u{2}-\u{3}\u{4}\u{5}")]
+    );
+    assert_eq!(
+        eval("\"-\"[1 [2] [3 [4 [5]]]]*"),
+        [Str!("1-\u{2}-\u{3}\u{4}\u{5}")]
+    );
 }
 
-// TODO: implemement join and fold tests
-fn mul_join() {}
+#[test]
+fn mul_join_array_array() {
+    assert_eq!(eval("[1 2][4]*"), [Array!([Num(1), Num(4), Num(2)])]);
+    assert_eq!(
+        eval("[1 [2] [3 [4 [5]]]] [6 7]*"),
+        [Array!([
+            Num(1),
+            Num(6),
+            Num(7),
+            Num(2),
+            Num(6),
+            Num(7),
+            Num(3),
+            Array!([Num(4), Array!([Num(5)])])
+        ])]
+    );
+}
 
-fn mul_fold() {}
+#[test]
+fn mul_join_str_str() {
+    assert_eq!(eval("\"asdf\"\" \"*"), [Str!("a s d f")]);
+}
+
+#[test]
+fn mul_fold_array() {
+    assert_eq!(eval("[1 2 3 4]{+}*"), [Num(10)]);
+    assert_eq!(eval("{+}[1 2 3 4]*"), [Num(10)]);
+}
+
+#[test]
+fn mul_fold_str() {
+    assert_eq!(eval("\"asdf\"{+}*"), [Num(414)]);
+    assert_eq!(eval("{+}\"asdf\"*"), [Num(414)]);
+}
 
 // test/
 #[test]
