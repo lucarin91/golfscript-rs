@@ -66,6 +66,15 @@ impl Interpreter {
         // '-' symbol immediately precedes the value (special lexer case)
         match coerce(self.pop2()?) {
             (Num(x), Num(y)) => self.push(Num(y - x)),
+            (Array(x), Array(y)) => {
+                self.push(Array(
+                    y.iter()
+                        .filter(|el| !x.contains(el))
+                        .cloned()
+                        .collect_vec()
+                        .into_boxed_slice(),
+                ));
+            }
             _ => unimplemented!(),
         }
 

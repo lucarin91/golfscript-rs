@@ -169,6 +169,21 @@ fn add_block() {
     assert_eq!(eval("{1}{2-}+"), [Block!([Num(1), Num(2), Op('-')])]);
 }
 
+#[test]
+fn add_coercion() {
+    // to block
+    assert_eq!(eval("\"a\"{2}+"), [Block!([Str!("a"), Num(2)])]);
+    assert_eq!(eval("[1 2]{2}+"), [Block!([Num(1), Num(2), Num(2)])]);
+    assert_eq!(eval("1{2}+"), [Block!([Num(1), Num(2)])]);
+
+    // to string
+    assert_eq!(eval("[50]\"b\"+"), [Str!("2b")]);
+    assert_eq!(eval("1\"b\"+"), [Str!("1b")]);
+
+    // to array
+    assert_eq!(eval("1[2]+"), [Array!([Num(1), Num(2)])]);
+}
+
 // test-
 #[test]
 fn sub_num() {
@@ -178,9 +193,17 @@ fn sub_num() {
     assert_eq!(eval("1 2- 3+"), [Num(2)]);
 }
 
-// TODO: enable sub array test
+#[test]
 fn sub_array() {
-    assert_eq!(eval("[5 2 5 4 1 1][1 2]-"), [Num(5), Num(5), Num(4)]);
+    assert_eq!(
+        eval("[5 2 5 4 1 1][1 2]-"),
+        [Array!([Num(5), Num(5), Num(4)])]
+    );
+}
+
+#[test]
+fn sub_coercion() {
+    assert_eq!(eval("[1 2 3]2-"), [Array!([Num(1), Num(3)])]);
 }
 
 // test*
