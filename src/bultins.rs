@@ -3,8 +3,7 @@ extern crate rand;
 
 use itertools::Itertools;
 use rand::distributions::{IndependentSample, Range};
-use std::char;
-use std::iter;
+use std::{char, iter, mem};
 
 use items::{GSError, Item};
 use Interpreter;
@@ -246,7 +245,35 @@ impl Interpreter {
     /// /
     pub fn div(&mut self) -> GSErr {
         match self.pop2()? {
-            (Num(x), Num(y)) => self.push(Num(y / x)),
+            (Num(y), Num(x)) => self.push(Num(x / y)),
+
+            (Array(y), Array(x)) => {
+                let mut yit = y.iter().cycle();
+                let (mut v_nomatch, mut v_match, mut items) = (Vec::new(), Vec::new(), Vec::new());
+                for el in x.iter() {
+                    match yit.next() {
+                        // save elements that match with split pattern
+                        Some(i) if i == el => v_match.push(el.clone()),
+                        // save elements that do not match with split pattern
+                        Some(i) if i != el => {
+                            v_nomatch.extend(mem::take(&mut v_match).into_iter());
+                            v_nomatch.push(el.clone());
+                            yit = y.iter().cycle();
+                        }
+                        _ => (),
+                    }
+                    // split the array, all the pattern match
+                    if v_match.len() == y.len() {
+                        v_match.clear();
+                        items.push(Array(mem::take(&mut v_nomatch).into_boxed_slice()));
+                    }
+                }
+                // add remaining elements as last Array
+                if !v_nomatch.is_empty() {
+                    items.push(Array(v_nomatch.into_boxed_slice()));
+                }
+                self.push(Array(items.into_boxed_slice()));
+            }
 
             _ => unimplemented!(),
         }

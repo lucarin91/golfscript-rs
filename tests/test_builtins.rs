@@ -286,6 +286,54 @@ fn div_num() {
     assert_eq!(eval("7 3/"), [Num(2)]);
 }
 
+#[test]
+fn div_split_array() {
+    assert_eq!(
+        eval("[1 2 3 4 2 3 5][2 3]/"),
+        [Array!([
+            Array!([Num(1)]),
+            Array!([Num(4)]),
+            Array!([Num(5)])
+        ])]
+    );
+}
+
+// TODO: implement this
+fn div_split_str() {
+    assert_eq!(
+        eval("'a s d f'' '/"),
+        [Array!([Str!("a"), Str!("s"), Str!("d"), Str!("f")])]
+    );
+}
+
+// TODO: implement this
+fn div_chunk() {
+    assert_eq!(
+        eval("[1 2 3 4 5] 2/"),
+        [Array!([
+            Array!([Num(1), Num(2)]),
+            Array!([Num(3), Num(4)]),
+            Array!([Num(5)])
+        ])]
+    );
+}
+
+// TODO: implement this
+fn div_unfold() {
+    assert_eq!(
+        eval("0 1 {10<} { .@+ } / "),
+        [
+            Num(8),
+            Array!([Num(1), Num(1), Num(2), Num(3), Num(5), Num(8)])
+        ]
+    );
+}
+
+// TODO: implement this
+fn div_each() {
+    assert_eq!(eval("[1 2 3]{1+}/"), [Array!([Num(2), Num(3), Num(4)])]);
+}
+
 // test%
 #[test]
 fn mod_num() {
