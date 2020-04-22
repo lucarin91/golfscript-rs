@@ -32,15 +32,13 @@ impl Interpreter {
 
     /// Execute a string, returning the stack state after execution
     pub fn exec(&mut self, input: &str) -> Result<&[Item], GSError> {
-        // TODO: should return also the variable setted
         let items = lex(&input)?;
         self.exec_items(&items)
     }
 
     /// Execute a sequence of items, returning the stack state after execution
     pub fn exec_items(&mut self, items: &[Item]) -> Result<&[Item], GSError> {
-        // Maybe it has to have owneship of items instead of borrow/clone
-        for item in items.iter() {
+        for item in items {
             match item {
                 // Can we restructure to allow for rebound variables?
                 Op('+') => self.add()?,
