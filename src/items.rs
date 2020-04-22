@@ -96,10 +96,11 @@ impl Item {
             Item::Num(val) => Item::Str(val.to_string()),
             Item::Array(items) => Item::Str(
                 items
-                    .iter()
+                    .into_vec()
+                    .into_iter()
                     .map(|item| {
                         if let Item::Num(val) = item {
-                            char::from_u32(*val as u32).unwrap().to_string()
+                            char::from_u32(val as u32).unwrap().to_string()
                         } else {
                             // TODO: can the clone be removed?
                             if let Item::Str(val) = item.clone().upcast_to_string() {
@@ -126,11 +127,10 @@ impl Item {
             x @ Item::Num(_) => Item::Block(vec![x].into_boxed_slice()),
             Item::Array(items) => {
                 let mut res: Vec<Item> = Vec::new();
-                for item in items.iter() {
-                    if let Item::Block(val) = item.clone().upcast_to_block() {
-                        for i in val.iter() {
-                            // TODO: can the clone be removed?
-                            res.push(i.clone());
+                for item in items.into_vec() {
+                    if let Item::Block(val) = item.upcast_to_block() {
+                        for i in val.into_vec() {
+                            res.push(i);
                         }
                     } else {
                         panic!("upcast_to_block only accepts Num, Array, String, Block")

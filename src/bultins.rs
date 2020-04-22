@@ -33,23 +33,15 @@ impl Interpreter {
             (Str(x), Str(y)) => self.push(Str(y + &x)),
 
             (Array(x), Array(y)) => {
-                self.push(Array(
-                    y.iter()
-                        .chain(x.iter())
-                        .cloned()
-                        .collect_vec()
-                        .into_boxed_slice(),
-                ));
+                let mut y = y.into_vec();
+                y.extend(x.into_vec().into_iter());
+                self.push(Array(y.into_boxed_slice()));
             }
 
             (Block(x), Block(y)) => {
-                self.push(Block(
-                    y.iter()
-                        .chain(x.iter())
-                        .cloned()
-                        .collect_vec()
-                        .into_boxed_slice(),
-                ));
+                let mut y = y.into_vec();
+                y.extend(x.into_vec().into_iter());
+                self.push(Block(y.into_boxed_slice()));
             }
 
             _ => unimplemented!(),
@@ -67,9 +59,9 @@ impl Interpreter {
             (Num(x), Num(y)) => self.push(Num(y - x)),
             (Array(x), Array(y)) => {
                 self.push(Array(
-                    y.iter()
+                    y.into_vec()
+                        .into_iter()
                         .filter(|el| !x.contains(el))
-                        .cloned()
                         .collect_vec()
                         .into_boxed_slice(),
                 ));
@@ -191,7 +183,8 @@ impl Interpreter {
             // join on Array and Str
             (Array(x), Str(y)) | (Str(y), Array(x)) => {
                 self.push(Str(x
-                    .iter()
+                    .into_vec()
+                    .into_iter()
                     .filter_map(|el| {
                         if let Str(val) = el.clone().upcast_to_string() {
                             Some(val)
@@ -203,11 +196,11 @@ impl Interpreter {
             }
             (Array(y), Array(x)) => {
                 let mut items: Vec<Item> = Vec::new();
-                let mut x = x.iter().peekable();
+                let mut x = x.into_vec().into_iter().peekable();
                 while let Some(el) = x.next() {
                     match el {
-                        Array(i) => items.extend_from_slice(i),
-                        el => items.push(el.clone()),
+                        Array(i) => items.extend(i.into_vec().into_iter()),
+                        el => items.push(el),
                     }
                     if x.peek() != None {
                         items.extend_from_slice(&y);
@@ -221,10 +214,11 @@ impl Interpreter {
 
             // fold on Array and Str
             (Block(y), Array(x)) | (Array(x), Block(y)) => {
-                for el in x.iter() {
-                    self.push(el.clone());
+                let x_len = x.len();
+                for el in x.into_vec() {
+                    self.push(el);
                 }
-                for _ in 1..x.len() {
+                for _ in 1..x_len {
                     self.exec_items(&y)?;
                 }
             }
@@ -250,12 +244,12 @@ impl Interpreter {
             (Array(y), Array(x)) => {
                 let mut yit = y.iter().cycle();
                 let (mut v_nomatch, mut v_match, mut items) = (Vec::new(), Vec::new(), Vec::new());
-                for el in x.iter() {
+                for el in x.into_vec() {
                     match yit.next() {
                         // save elements that match with split pattern
-                        Some(i) if i == el => v_match.push(el.clone()),
+                        Some(i) if *i == el => v_match.push(el.clone()),
                         // save elements that do not match with split pattern
-                        Some(i) if i != el => {
+                        Some(i) if *i != el => {
                             v_nomatch.extend(mem::take(&mut v_match).into_iter());
                             v_nomatch.push(el.clone());
                             yit = y.iter().cycle();
@@ -296,8 +290,7 @@ impl Interpreter {
             Num(x) => self.push(Num(!x)),
 
             Array(x) => {
-                // TODO: check this part, maybe error
-                for item in x.iter().cloned() {
+                for item in x.into_vec() {
                     self.push(item)
                 }
             }
@@ -339,9 +332,9 @@ impl Interpreter {
 
             (Array(x), Array(y)) => {
                 self.push(Array(
-                    x.iter()
-                        .cloned()
-                        .chain(y.iter().cloned())
+                    x.into_vec()
+                        .into_iter()
+                        .chain(y.into_vec().into_iter())
                         .unique()
                         .collect_vec()
                         .into_boxed_slice(),
@@ -361,8 +354,8 @@ impl Interpreter {
             (Array(x), Array(y)) => {
                 // TODO: Incorrect value
                 self.push(Array(
-                    x.iter()
-                        .cloned()
+                    x.into_vec()
+                        .into_iter()
                         .filter(|ref x| !y.contains(x))
                         .unique()
                         .collect_vec()
@@ -412,8 +405,8 @@ impl Interpreter {
 
             (Num(x), Array(y)) | (Array(y), Num(x)) => {
                 self.push(Array(
-                    y.iter()
-                        .cloned()
+                    y.into_vec()
+                        .into_iter()
                         .take(x as usize)
                         .collect_vec()
                         .into_boxed_slice(),
@@ -440,8 +433,8 @@ impl Interpreter {
             // apply this way
             (Num(x), Array(y)) | (Array(y), Num(x)) => {
                 self.push(Array(
-                    y.iter()
-                        .cloned()
+                    y.into_vec()
+                        .into_iter()
                         .skip(x as usize)
                         .collect_vec()
                         .into_boxed_slice(),

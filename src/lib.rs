@@ -39,7 +39,8 @@ impl Interpreter {
 
     /// Execute a sequence of items, returning the stack state after execution
     pub fn exec_items(&mut self, items: &[Item]) -> Result<&[Item], GSError> {
-        for item in items.iter().cloned() {
+        // Maybe it has to have owneship of items instead of borrow/clone
+        for item in items.iter() {
             match item {
                 // Can we restructure to allow for rebound variables?
                 Op('+') => self.add()?,
@@ -67,14 +68,14 @@ impl Interpreter {
                 Op('~') => self.neg()?,
                 Op('`') => self.backtick()?,
                 Op(',') => self.array()?,
-                Assign(name) => self.assign(name)?,
-                Var(ref name) if "abs" == name.as_str() => self.builtin_abs()?,
-                Var(ref name) if "if" == name.as_str() => self.builtin_if()?,
-                Var(ref name) if "rand" == name.as_str() => self.builtin_rand()?,
-                Var(ref name) if "print" == name.as_str() => self.builtin_print()?,
-                Var(ref name) if "n" == name.as_str() => self.builtin_n()?,
+                Assign(name) => self.assign(name.clone())?,
+                Var(name) if "abs" == name.as_str() => self.builtin_abs()?,
+                Var(name) if "if" == name.as_str() => self.builtin_if()?,
+                Var(name) if "rand" == name.as_str() => self.builtin_rand()?,
+                Var(name) if "print" == name.as_str() => self.builtin_print()?,
+                Var(name) if "n" == name.as_str() => self.builtin_n()?,
                 Var(name) => self.exec_variable(name.as_str())?,
-                x @ Num(_) | x @ Str(_) | x @ Block(_) => self.push(x),
+                x @ Num(_) | x @ Str(_) | x @ Block(_) => self.push(x.clone()),
 
                 x => {
                     return Err(GSError::Runtime(format!(
