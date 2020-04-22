@@ -125,19 +125,13 @@ impl Interpreter {
 
             Block(ref block) => match self.pop()? {
                 Array(mut items) => {
-                    items.sort_by_key(|a| {
-                        self.push(a.clone());
-                        self.exec_items(block).unwrap();
-                        self.pop().unwrap()
-                    });
+                    items.sort_by_cached_key(|a| self.fun_call_with(block, a.clone()).unwrap());
                     self.push(Array(items));
                 }
                 Str(val) => {
                     let mut buf: Vec<char> = val.chars().collect();
-                    buf.sort_by_key(|a| {
-                        self.push(Str(a.to_string()));
-                        self.exec_items(block).unwrap();
-                        self.pop().unwrap()
+                    buf.sort_by_cached_key(|a| {
+                        self.fun_call_with(block, Str(a.to_string())).unwrap()
                     });
                     self.push(Str(buf.into_iter().collect()))
                 }
@@ -241,6 +235,7 @@ impl Interpreter {
         match self.pop2()? {
             (Num(y), Num(x)) => self.push(Num(x / y)),
 
+            // split Array
             (Array(y), Array(x)) => {
                 let mut yit = y.iter().cycle();
                 let (mut v_nomatch, mut v_match, mut items) = (Vec::new(), Vec::new(), Vec::new());
@@ -265,6 +260,66 @@ impl Interpreter {
                 // add remaining elements as last Array
                 if !v_nomatch.is_empty() {
                     items.push(Array(v_nomatch.into_boxed_slice()));
+                }
+                self.push(Array(items.into_boxed_slice()));
+            }
+
+            // split Str
+            (Str(y), Str(x)) => {
+                self.push(Array(
+                    x.split(y.as_str())
+                        .map(|s| Str(s.to_owned()))
+                        .collect_vec()
+                        .into_boxed_slice(),
+                ));
+            }
+
+            // chunk Array
+            (Num(y), Array(x)) => {
+                self.push(Array(
+                    x.into_vec()
+                        .into_iter()
+                        .chunks_lazy(y as usize)
+                        .into_iter()
+                        .map(|c| Array(c.collect_vec().into_boxed_slice()))
+                        .collect_vec()
+                        .into_boxed_slice(),
+                ));
+            }
+
+            // each Array
+            (Block(y), Array(x)) => {
+                let items = x
+                    .into_vec()
+                    .into_iter()
+                    .map(|c| self.fun_call_with(&y, c).unwrap())
+                    .collect_vec()
+                    .into_boxed_slice();
+                self.push(Array(items));
+            }
+
+            // unfold Block
+            (Block(y), Block(x)) => {
+                let mut items = Vec::new();
+                loop {
+                    self.dup()?;
+                    let check = self.fun_call(&x)?;
+                    match check {
+                        Num(n) if n != 0 => {
+                            items.push(self.peek()?);
+                            self.exec_items(&y)?;
+                        }
+                        Num(_) => {
+                            self.pop()?;
+                            break;
+                        }
+                        e => {
+                            return Err(GSError::Runtime(format!(
+                                "expected number but found: {:?}",
+                                e
+                            )))
+                        }
+                    }
                 }
                 self.push(Array(items.into_boxed_slice()));
             }

@@ -298,18 +298,18 @@ fn div_split_array() {
     );
 }
 
-// TODO: implement this
+#[test]
 fn div_split_str() {
     assert_eq!(
-        eval("'a s d f'' '/"),
+        eval("\"a s d f\"\" \"/"),
         [Array!([Str!("a"), Str!("s"), Str!("d"), Str!("f")])]
     );
 }
 
-// TODO: implement this
+#[test]
 fn div_chunk() {
     assert_eq!(
-        eval("[1 2 3 4 5] 2/"),
+        eval("[1 2 3 4 5]2/"),
         [Array!([
             Array!([Num(1), Num(2)]),
             Array!([Num(3), Num(4)]),
@@ -318,10 +318,10 @@ fn div_chunk() {
     );
 }
 
-// TODO: implement this
+#[test]
 fn div_unfold() {
     assert_eq!(
-        eval("0 1 {10<} { .@+ } / "),
+        eval("0 1 {10<}{.@+}/"),
         [
             Num(8),
             Array!([Num(1), Num(1), Num(2), Num(3), Num(5), Num(8)])
@@ -329,7 +329,7 @@ fn div_unfold() {
     );
 }
 
-// TODO: implement this
+#[test]
 fn div_each() {
     assert_eq!(eval("[1 2 3]{1+}/"), [Array!([Num(2), Num(3), Num(4)])]);
 }
