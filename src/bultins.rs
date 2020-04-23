@@ -180,7 +180,7 @@ impl Interpreter {
                     .into_vec()
                     .into_iter()
                     .filter_map(|el| {
-                        if let Str(val) = el.clone().upcast_to_string() {
+                        if let Str(val) = el.upcast_to_string() {
                             Some(val)
                         } else {
                             None
@@ -242,11 +242,11 @@ impl Interpreter {
                 for el in x.into_vec() {
                     match yit.next() {
                         // save elements that match with split pattern
-                        Some(i) if *i == el => v_match.push(el.clone()),
+                        Some(i) if *i == el => v_match.push(el),
                         // save elements that do not match with split pattern
                         Some(i) if *i != el => {
                             v_nomatch.extend(mem::take(&mut v_match).into_iter());
-                            v_nomatch.push(el.clone());
+                            v_nomatch.push(el);
                             yit = y.iter().cycle();
                         }
                         _ => (),
@@ -289,13 +289,10 @@ impl Interpreter {
 
             // each Array
             (Block(y), Array(x)) => {
-                let items = x
-                    .into_vec()
-                    .into_iter()
-                    .map(|c| self.fun_call_with(&y, c).unwrap())
-                    .collect_vec()
-                    .into_boxed_slice();
-                self.push(Array(items));
+                for el in x.into_vec() {
+                    self.push(el);
+                    self.exec_items(&y)?;
+                }
             }
 
             // unfold Block
@@ -304,8 +301,8 @@ impl Interpreter {
                 loop {
                     self.dup()?;
                     let check = self.fun_call(&x)?;
-                    match check {
-                        Num(n) if n != 0 => {
+                    match check.last().unwrap() {
+                        Num(n) if *n != 0 => {
                             items.push(self.peek()?);
                             self.exec_items(&y)?;
                         }
@@ -332,7 +329,41 @@ impl Interpreter {
     /// %
     pub fn modulo(&mut self) -> GSErr {
         match self.pop2()? {
-            (Num(x), Num(y)) => self.push(Num(y % x)),
+            (Num(y), Num(x)) => self.push(Num(x % y)),
+
+            (Str(y), Str(x)) => {
+                self.push(Array(
+                    x.split(y.as_str())
+                        .filter(|s| !s.is_empty())
+                        .map(|s| Str(s.to_owned()))
+                        .collect_vec()
+                        .into_boxed_slice(),
+                ));
+            }
+
+            (Num(y), Array(x)) => {
+                let mut items_vec = x
+                    .into_vec()
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(i, _)| i % y.abs() as usize == 0)
+                    .map(|(_, val)| val)
+                    .collect_vec();
+                if y < 0 {
+                    items_vec.reverse();
+                }
+                self.push(Array(items_vec.into_boxed_slice()));
+            }
+
+            (Block(y), Array(x)) => {
+                let items = x
+                    .into_vec()
+                    .into_iter()
+                    .flat_map(|c| self.fun_call_with(&y, c).unwrap().into_iter())
+                    .collect_vec()
+                    .into_boxed_slice();
+                self.push(Array(items));
+            }
 
             _ => unimplemented!(),
         }

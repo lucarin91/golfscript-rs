@@ -331,13 +331,35 @@ fn div_unfold() {
 
 #[test]
 fn div_each() {
-    assert_eq!(eval("[1 2 3]{1+}/"), [Array!([Num(2), Num(3), Num(4)])]);
+    assert_eq!(eval("[1 2 3]{1+}/"), [Num(2), Num(3), Num(4)]);
 }
 
 // test%
 #[test]
 fn mod_num() {
     assert_eq!(eval("7 3%"), [Num(1)]);
+}
+
+#[test]
+fn mod_split_str() {
+    assert_eq!(eval("\"assdfs\" \"s\"%"), [Array!([Str!("a"), Str!("df")])]);
+}
+
+#[test]
+fn mod_array() {
+    assert_eq!(eval("[1 2 3 4 5] 2%"), [Array!([Num(1), Num(3), Num(5)])]);
+    assert_eq!(
+        eval("[1 2 3 4 5] -1%"),
+        [Array!([Num(5), Num(4), Num(3), Num(2), Num(1)])]
+    );
+}
+
+#[test]
+fn mod_map() {
+    assert_eq!(
+        eval("[1 2 3]{.}%"),
+        [Array!([Num(1), Num(1), Num(2), Num(2), Num(3), Num(3)])]
+    );
 }
 
 // test|

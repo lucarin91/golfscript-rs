@@ -138,12 +138,15 @@ impl Interpreter {
         }
     }
 
-    fn fun_call(&mut self, block: &[Item]) -> Result<Item, GSError> {
-        self.exec_items(&block).unwrap();
-        self.pop()
+    fn fun_call(&mut self, block: &[Item]) -> Result<Vec<Item>, GSError> {
+        let prev_size = self.stack.len();
+        match self.exec_items(&block) {
+            Ok(_) => Ok(self.stack.drain(prev_size - 1..).collect::<Vec<Item>>()),
+            Err(err) => Err(err),
+        }
     }
 
-    fn fun_call_with(&mut self, block: &[Item], val: Item) -> Result<Item, GSError> {
+    fn fun_call_with(&mut self, block: &[Item], val: Item) -> Result<Vec<Item>, GSError> {
         self.push(val);
         self.fun_call(block)
     }
