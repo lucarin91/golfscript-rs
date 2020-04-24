@@ -58,6 +58,7 @@ impl Interpreter {
         match coerce(self.pop2()?) {
             (Num(x), Num(y)) => self.push(Num(y - x)),
             (Array(x), Array(y)) => {
+                // TODO: improuve performance using a set to check if el is in x
                 self.push(Array(
                     y.into_vec()
                         .into_iter()
@@ -414,9 +415,9 @@ impl Interpreter {
     /// |
     pub fn or(&mut self) -> GSErr {
         match coerce(self.pop2()?) {
-            (Num(x), Num(y)) => self.push(Num(x | y)),
+            (Num(y), Num(x)) => self.push(Num(x | y)),
 
-            (Array(x), Array(y)) => {
+            (Array(y), Array(x)) => {
                 self.push(Array(
                     x.into_vec()
                         .into_iter()
@@ -435,14 +436,14 @@ impl Interpreter {
     /// &
     pub fn and(&mut self) -> GSErr {
         match coerce(self.pop2()?) {
-            (Num(x), Num(y)) => self.push(Num(x & y)),
+            (Num(y), Num(x)) => self.push(Num(x & y)),
 
-            (Array(x), Array(y)) => {
-                // TODO: Incorrect value
+            (Array(y), Array(x)) => {
+                // TODO: improuve performance using a set to check if el is in y
                 self.push(Array(
                     x.into_vec()
                         .into_iter()
-                        .filter(|ref x| !y.contains(x))
+                        .filter(|el| y.contains(el))
                         .unique()
                         .collect_vec()
                         .into_boxed_slice(),
@@ -457,7 +458,25 @@ impl Interpreter {
     /// ^
     pub fn xor(&mut self) -> GSErr {
         match coerce(self.pop2()?) {
-            (Num(x), Num(y)) => self.push(Num(x ^ y)),
+            (Num(y), Num(x)) => self.push(Num(x ^ y)),
+
+            (Array(y), Array(x)) => {
+                // TODO: improuve performance using sets for the checking
+                let mut only_x = x
+                    .iter()
+                    .unique()
+                    .filter(|el| !y.contains(el))
+                    .cloned()
+                    .collect_vec();
+                let only_y = y
+                    .into_vec()
+                    .into_iter()
+                    .unique()
+                    .filter(|el| !x.contains(el))
+                    .collect_vec();
+                only_x.extend(only_y);
+                self.push(Array(only_x.into_boxed_slice()));
+            }
 
             _ => unimplemented!(),
         }
@@ -481,22 +500,28 @@ impl Interpreter {
     // <
     pub fn lt(&mut self) -> GSErr {
         match self.pop2()? {
-            (Num(y), Num(x)) => {
-                self.push(Num(if x < y { 1 } else { 0 }));
-            }
-
-            (Str(y), Str(x)) => {
+            (y @ Num(_), x @ Num(_)) | (y @ Str(_), x @ Str(_)) => {
                 self.push(Num(if x < y { 1 } else { 0 }));
             }
 
             (Num(x), Array(y)) | (Array(y), Num(x)) => {
+                let y_len = y.len() as i64;
                 self.push(Array(
                     y.into_vec()
                         .into_iter()
-                        .take(x as usize)
+                        .take(if x > 0 { x } else { y_len + x } as usize)
                         .collect_vec()
                         .into_boxed_slice(),
                 ));
+            }
+
+            (Num(x), Str(y)) | (Str(y), Num(x)) => {
+                let y_len = y.len() as i64;
+                self.push(Str(y
+                    .chars()
+                    .into_iter()
+                    .take(if x > 0 { x } else { y_len + x } as usize)
+                    .collect()));
             }
 
             _ => unimplemented!(),
@@ -508,20 +533,25 @@ impl Interpreter {
     // >
     pub fn gt(&mut self) -> GSErr {
         match self.pop2()? {
-            (Num(y), Num(x)) => {
-                self.push(Num(if x > y { 1 } else { 0 }));
-            }
-            (Str(y), Str(x)) => {
+            (y @ Num(_), x @ Num(_)) | (y @ Str(_), x @ Str(_)) => {
                 self.push(Num(if x > y { 1 } else { 0 }));
             }
 
-            // Dont implement str specifically, upcast to an array and
-            // apply this way
+            (Num(x), Str(y)) | (Str(y), Num(x)) => {
+                let y_len = y.len() as i64;
+                self.push(Str(y
+                    .chars()
+                    .into_iter()
+                    .skip(if x > 0 { x } else { y_len + x } as usize)
+                    .collect()));
+            }
+
             (Num(x), Array(y)) | (Array(y), Num(x)) => {
+                let y_len = y.len() as i64;
                 self.push(Array(
                     y.into_vec()
                         .into_iter()
-                        .skip(x as usize)
+                        .skip(if x > 0 { x } else { y_len + x } as usize)
                         .collect_vec()
                         .into_boxed_slice(),
                 ));
@@ -536,18 +566,26 @@ impl Interpreter {
     // =
     pub fn eq(&mut self) -> GSErr {
         match self.pop2()? {
-            (Num(x), Num(y)) => {
-                self.push(Num(if x == y { 1 } else { 0 }));
-            }
-            (Str(x), Str(y)) => {
+            (y @ Num(_), x @ Num(_))
+            | (y @ Array(_), x @ Array(_))
+            | (y @ Str(_), x @ Str(_))
+            | (y @ Block(_), x @ Block(_)) => {
                 self.push(Num(if x == y { 1 } else { 0 }));
             }
 
             (Num(x), Array(y)) | (Array(y), Num(x)) => {
                 let os = if x < 0 { y.len() as i64 + x } else { x };
 
-                if 0 <= os && os < y.len() as i64 {
-                    self.push(y[os as usize].clone());
+                if let Some(el) = y.get(os as usize) {
+                    self.push(el.clone());
+                }
+            }
+
+            (Num(x), Str(y)) | (Str(y), Num(x)) => {
+                let os = if x < 0 { y.len() as i64 + x } else { x };
+
+                if let Some(el) = y.chars().nth(os as usize) {
+                    self.push(Num(el as i64));
                 }
             }
 

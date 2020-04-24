@@ -368,16 +368,42 @@ fn or_num() {
     assert_eq!(eval("5 3|"), [Num(7)]);
 }
 
+#[test]
+fn or_array() {
+    assert_eq!(eval("[1 1 2 2][1 3]|"), [Array!([Num(1), Num(2), Num(3)])]);
+}
+
+#[test]
+fn or_coercion() {
+    assert_eq!(eval("[1 1 2 2] 3 |"), [Array!([Num(1), Num(2), Num(3)])]);
+}
+
 // test&
 #[test]
 fn and_num() {
     assert_eq!(eval("5 3&"), [Num(1)]);
 }
 
+#[test]
+fn and_array() {
+    assert_eq!(eval("[1 1 2 2][1 3]&"), [Array!([Num(1)])]);
+}
+
+#[test]
+fn and_coercion() {
+    assert_eq!(eval("[1 1 2 2] 1 &"), [Array!([Num(1)])]);
+}
+
 // test^
 #[test]
 fn xor_num() {
     assert_eq!(eval("5 3^"), [Num(6)]);
+}
+
+// test^
+#[test]
+fn xor_array() {
+    assert_eq!(eval("[1 1 2 2][1 3]^"), [Array!([Num(2), Num(3)])]);
 }
 
 // test[]
@@ -393,6 +419,20 @@ fn swap() {
     assert_eq!(eval("1 2 3\\"), [Num(1), Num(3), Num(2)]);
 }
 
+//test: (assign)
+#[test]
+fn assign() {
+    assert_eq!(eval("1:a a"), [Num(1), Num(1)]);
+    assert_eq!(eval("1:a;a"), [Num(1)]);
+    // TODO: activate this test, also number should be variable
+    // assert_eq!(eval("1:0;0"), [Num(1)]);
+}
+
+#[test]
+fn assign_block() {
+    assert_eq!(eval("{-1*-}:plus;3 2 plus"), [Num(5)])
+}
+
 // test;
 #[test]
 fn pop_discard() {
@@ -404,49 +444,107 @@ fn pop_discard() {
 #[test]
 fn lt_num() {
     assert_eq!(eval("3 4<"), [Num(1)]);
+    assert_eq!(eval("6 4<"), [Num(0)]);
 }
 
 #[test]
 fn lt_str() {
     assert_eq!(eval("\"asdf\"\"asdg\"<"), [Num(1)]);
+    assert_eq!(eval("\"fdfg\"\"aaad\"<"), [Num(0)]);
 }
 
 #[test]
-fn lt_num_array() {
+fn lt_array_num() {
     assert_eq!(eval("[1 2 3]2<"), [Array!([Num(1), Num(2)])]);
+    assert_eq!(eval("[1 2 3]-2<"), [Array!([Num(1)])]);
+}
+
+#[test]
+fn lt_str_num() {
+    assert_eq!(eval("\"asdf\" 1 <"), [Str!("a")]);
+    assert_eq!(eval("\"asdf\" -1 <"), [Str!("asd")]);
+}
+
+fn lt_block_num() {
+    // TODO: Block internals should be treated as a string
+    // Example:
+    // {asdf} -1 <  -->  {asd}
+    // {1 1 +} 2 <  -->  {1 }
 }
 
 // test>
 #[test]
 fn gt_num() {
     assert_eq!(eval("3 4>"), [Num(0)]);
+    assert_eq!(eval("5 4>"), [Num(1)]);
 }
 
 #[test]
 fn gt_str() {
     assert_eq!(eval("\"asdf\"\"asdg\">"), [Num(0)]);
+    assert_eq!(eval("\"zzdf\"\"asdg\">"), [Num(1)]);
 }
 
 #[test]
-fn gt_num_array() {
+fn gt_array_num() {
     assert_eq!(eval("[1 2 3]2>"), [Array!([Num(3)])]);
+    assert_eq!(eval("[1 2 3]-2>"), [Array!([Num(2), Num(3)])]);
+}
+
+#[test]
+fn gt_str_num() {
+    assert_eq!(eval("\"asdf\" 1 >"), [Str!("sdf")]);
+    assert_eq!(eval("\"asdf\" -1 >"), [Str!("f")]);
+}
+
+fn gt_block_num() {
+    // TODO: Block internals should be treated as a string
+    // Example:
+    // {asdf} -1 >  -->  {f}
+    // {1 1 +} 1 >  -->  { 1 +}
 }
 
 // test=
 #[test]
 fn eq_num() {
     assert_eq!(eval("3 4="), [Num(0)]);
+    assert_eq!(eval("4 4="), [Num(1)]);
 }
 
 #[test]
 fn eq_str() {
-    assert_eq!(eval("\"asdf\"\"asdg\">"), [Num(0)]);
+    assert_eq!(eval("\"asdf\"\"asdg\"="), [Num(0)]);
+    assert_eq!(eval("\"asdg\"\"asdg\"="), [Num(1)]);
+}
+
+#[test]
+fn eq_array() {
+    assert_eq!(eval("[1 2 3] [1 1 3]="), [Num(0)]);
+    assert_eq!(eval("[1 2 3] [1 2 3]="), [Num(1)]);
+}
+
+#[test]
+fn eq_block() {
+    assert_eq!(eval("{1 2 3} {1 1 3}="), [Num(0)]);
+    assert_eq!(eval("{1 2 3} {1 2 3}="), [Num(1)]);
 }
 
 #[test]
 fn eq_num_array() {
     assert_eq!(eval("[1 2 3]2="), [Num(3)]);
     assert_eq!(eval("[1 2 3]-1="), [Num(3)]);
+}
+
+#[test]
+fn eq_num_str() {
+    assert_eq!(eval("\"asdf\" -1 ="), [Num(102)]);
+    assert_eq!(eval("\"asdf\" 2 ="), [Num(100)]);
+}
+
+fn eq_block_num() {
+    // TODO: Block internals should be treated as a string
+    // Example:
+    // {asdf} -1 =  -->  102
 }
 
 // test?
@@ -492,20 +590,6 @@ fn builtin_if() {
 #[test]
 fn builtin_abs() {
     assert_eq!(eval("-2abs"), [Num(2)]);
-}
-
-//test variable
-#[test]
-fn assignment() {
-    assert_eq!(eval("\"hello\":str"), [Str!("hello")]);
-    assert_eq!(eval("\"hello\":str;"), []);
-    assert_eq!(eval("\"hello\":str;str"), [Str!("hello")]);
-}
-
-//test variable block
-#[test]
-fn assignment_block() {
-    assert_eq!(eval("{-1*-}:plus;3 2 plus"), [Num(5)])
 }
 
 // TODO: add coercion tests
