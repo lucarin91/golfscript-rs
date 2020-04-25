@@ -127,7 +127,7 @@ fn lex_item(mut chars: &mut CharStream) -> Option<Result<Item, GSError>> {
             Some(ch) if ch.is_whitespace() => continue,
             Some(':') => {
                 let mut string = String::new();
-                // TODO: create a function for this
+                // TODO: dublicated create a function for this
                 loop {
                     match chars.peek() {
                         Some(ch) if ch.is_alphanumeric() || *ch == '_' => {
@@ -152,10 +152,13 @@ fn lex_item(mut chars: &mut CharStream) -> Option<Result<Item, GSError>> {
             | Some(ch @ ']') | Some(ch @ '~') | Some(ch @ '`') | Some(ch @ ',') => Item::Op(ch),
             Some(ch) => {
                 let mut string = ch.to_string();
-                // TODO: create a function for this
+                // TODO: dublicated create a function for this
                 loop {
-                    match chars.next() {
-                        Some(ch) if ch.is_alphanumeric() || ch == '_' => string.push(ch),
+                    match chars.peek() {
+                        Some(ch) if ch.is_alphanumeric() || *ch == '_' => {
+                            string.push(*ch);
+                            chars.next();
+                        }
                         Some(_) | None => break,
                     }
                 }
