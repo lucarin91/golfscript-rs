@@ -26,8 +26,45 @@ impl Interpreter {
         Interpreter {
             stack: Vec::new(),
             marker_stack: Vec::new(),
-            variables: HashMap::new(),
+            variables: Interpreter::get_default_var(),
         }
+    }
+
+    fn get_default_var() -> HashMap<String, Item> {
+        let mut variables = HashMap::new();
+        // Set predefined variables
+        variables.insert(
+            "and".to_string(),
+            Block(Box::new([Num(1), Op('$'), Var("if".to_string())])),
+        );
+        variables.insert(
+            "or".to_string(),
+            Block(Box::new([Num(1), Op('$'), Op('\\'), Var("if".to_string())])),
+        );
+        variables.insert(
+            "xor".to_string(),
+            Block(Box::new([
+                Op('\\'),
+                Op('!'),
+                Op('!'),
+                Block(Box::new([Op('!')])),
+                Op('*'),
+            ])),
+        );
+        variables.insert("n".to_string(), Str("\n".to_string()));
+        variables.insert(
+            "puts".to_string(),
+            Block(Box::new([
+                Var("print".to_string()),
+                Var("n".to_string()),
+                Var("print".to_string()),
+            ])),
+        );
+        variables.insert(
+            "p".to_string(),
+            Block(Box::new([Op('`'), Var("puts".to_string())])),
+        );
+        variables
     }
 
     /// Execute a string, returning the stack state after execution
@@ -71,7 +108,6 @@ impl Interpreter {
                 Var(name) if "if" == name.as_str() => self.builtin_if()?,
                 Var(name) if "rand" == name.as_str() => self.builtin_rand()?,
                 Var(name) if "print" == name.as_str() => self.builtin_print()?,
-                Var(name) if "n" == name.as_str() => self.builtin_n()?,
                 Var(name) => self.exec_variable(name.as_str())?,
                 x @ Num(_) | x @ Str(_) | x @ Block(_) => self.push(x.clone()),
 

@@ -745,10 +745,18 @@ impl Interpreter {
         // self.not()?; // Evaluate if top of stack is not, note this requires
         // a reverse condition check in the following.
 
-        // TODO: consider block case
         let (y, x) = self.pop2()?;
-        let check = self.pop()?;
-        self.push(if check.is_true() { x } else { y });
+        let check = self.pop()?.is_true();
+        match (y, x) {
+            // if the branch is a block execute it, otherwise push it into the stack
+            (_, Block(x)) if check => {
+                self.exec_items(&x)?;
+            }
+            (Block(y), _) if !check => {
+                self.exec_items(&y)?;
+            }
+            (y @ _, x @ _) => self.push(if check { x } else { y }),
+        }
         Ok(())
     }
 
@@ -777,7 +785,7 @@ impl Interpreter {
 
     // print
     pub fn builtin_print(&mut self) -> GSErr {
-        println!("{:?}", self.pop()?);
+        println!("{}", self.pop()?);
         Ok(())
     }
 

@@ -613,6 +613,31 @@ fn inc_array() {
     assert_eq!(eval("[1 2 3])"), [Array!([Num(1), Num(2)]), Num(3)]);
 }
 
+//test lazy_bool
+#[test]
+fn lazy_bool_and() {
+    assert_eq!(eval("5 {1 1+} and"), [Num(2)]);
+}
+
+#[test]
+fn lazy_bool_or() {
+    assert_eq!(eval("5 {1 0/} or"), [Num(5)]);
+}
+
+#[test]
+fn lazy_bool_xor() {
+    assert_eq!(eval("0 [3] xor"), [Array!([Num(3)])]);
+    assert_eq!(eval("2 [3] xor"), [Num(0)]);
+}
+
+// TODO: find a way to test builtin `print`, `p`, and `puts`
+
+// test n
+#[test]
+fn builtin_n() {
+    assert_eq!(eval("n"), [Str!("\n")]);
+}
+
 // test if
 #[test]
 fn builtin_if() {
@@ -620,8 +645,8 @@ fn builtin_if() {
     assert_eq!(eval("0 2 3if"), [Num(3)]);
 }
 
+#[test]
 fn builtin_if_block() {
-    // TODO: consider block case
     assert_eq!(eval("0 2 {1.} if"), [Num(1), Num(1)]);
 }
 
@@ -630,5 +655,3 @@ fn builtin_if_block() {
 fn builtin_abs() {
     assert_eq!(eval("-2abs"), [Num(2)]);
 }
-
-// TODO: add coercion tests
