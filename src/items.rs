@@ -143,4 +143,13 @@ impl Item {
             _ => panic!("upcast_to_block only accepts Num, Array, String, Block"),
         }
     }
+
+    pub fn is_true(&self) -> bool {
+        match self {
+            Item::Num(x) if *x != 0 => true,
+            Item::Str(x) if x.as_str() != "" => true,
+            Item::Array(x) | Item::Block(x) if !x.is_empty() => true,
+            _ => false,
+        }
+    }
 }

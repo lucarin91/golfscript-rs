@@ -75,16 +75,11 @@ impl Interpreter {
 
     /// !
     pub fn not(&mut self) -> GSErr {
-        match self.pop()? {
-            Num(x) => self.push(Num(if x == 0 { 1 } else { 0 })),
-
-            Str(ref x) => self.push(Num(if x == "" { 1 } else { 0 })),
-
-            Array(ref x) | Block(ref x) => self.push(Num(if x.is_empty() { 1 } else { 0 })),
-
-            _ => unimplemented!(),
+        if self.pop()?.is_true() {
+            self.push(Num(0))
+        } else {
+            self.push(Num(1))
         }
-
         Ok(())
     }
 
@@ -606,6 +601,25 @@ impl Interpreter {
                 self.push(Num(x.len() as i64));
             }
 
+            Block(y) => match self.pop()? {
+                Array(x) => {
+                    let items = x
+                        .into_vec()
+                        .into_iter()
+                        .filter(|el| {
+                            self.fun_call_with(&y, el.clone())
+                                .unwrap()
+                                .last()
+                                .unwrap()
+                                .is_true()
+                        })
+                        .collect_vec();
+                    self.push(Array(items.into_boxed_slice()));
+                }
+
+                _ => unimplemented!(),
+            },
+
             _ => unimplemented!(),
         }
         Ok(())
@@ -633,11 +647,23 @@ impl Interpreter {
                 self.push(Num(x.pow(y as u32)))
             }
 
-            (Num(x), Array(y)) | (Array(y), Num(x)) => {
+            (Array(y), Num(x)) => {
                 self.push(Num(y
                     .iter()
                     .position(|v| v == &Num(x))
                     .map_or_else(|| -1, |x| x as i64)));
+            }
+
+            (Block(y), Array(x)) => {
+                if let Some(item) = x.into_vec().into_iter().find(|v| {
+                    self.fun_call_with(&y, v.clone())
+                        .unwrap()
+                        .last()
+                        .unwrap()
+                        .is_true()
+                }) {
+                    self.push(item);
+                }
             }
 
             _ => unimplemented!(),
@@ -715,26 +741,14 @@ impl Interpreter {
 
     // if
     pub fn builtin_if(&mut self) -> GSErr {
-        self.not()?; // Evaluate if top of stack is not, note this requires
-                     // a reverse condition check in the following.
+        // Disable not in the if for now
+        // self.not()?; // Evaluate if top of stack is not, note this requires
+        // a reverse condition check in the following.
 
         // TODO: consider block case
-        match self.pop()? {
-            Num(x) => {
-                let (a, b) = self.pop2()?;
-
-                self.push(if x == 0 {
-                    a
-                } else if x == 1 {
-                    b
-                } else {
-                    panic!("expected 0 or 1 but found: {:?}", x)
-                });
-            }
-
-            x => panic!("expected number but found: {:?}", x),
-        }
-
+        let (y, x) = self.pop2()?;
+        let check = self.pop()?;
+        self.push(if check.is_true() { x } else { y });
         Ok(())
     }
 

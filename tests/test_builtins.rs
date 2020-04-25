@@ -547,6 +547,32 @@ fn eq_block_num() {
     // {asdf} -1 =  -->  102
 }
 
+//test,
+#[test]
+fn comma_num() {
+    assert_eq!(eval("3,"), [Array!([Num(0), Num(1), Num(2)])]);
+}
+
+#[test]
+fn comma_array() {
+    assert_eq!(eval("[1,1,1],"), [Num(3)]);
+    assert_eq!(eval("10,,"), [Num(10)]);
+}
+
+#[test]
+fn comma_block() {
+    assert_eq!(eval("5,{3%},"), [Array!([Num(1), Num(2), Num(4)])]);
+}
+
+// test.
+#[test]
+fn dot() {
+    assert_eq!(eval("1."), [Num(1), Num(1)]);
+    assert_eq!(eval("[1]."), [Array!([Num(1)]), Array!([Num(1)])]);
+    assert_eq!(eval("\"asdf\"."), [Str!("asdf"), Str!("asdf")]);
+    assert_eq!(eval("{1}."), [Block!([Num(1)]), Block!([Num(1)])]);
+}
+
 // test?
 #[test]
 fn qmark_num() {
@@ -556,6 +582,13 @@ fn qmark_num() {
 #[test]
 fn qmark_num_array() {
     assert_eq!(eval("5 [4 3 5 1]?"), [Num(2)]);
+    assert_eq!(eval("10 [4 3 5 1]?"), [Num(-1)]);
+}
+
+#[test]
+fn qmark_block_array() {
+    assert_eq!(eval("[1 2 3 4 5 6] {.* 20>} ?"), [Num(5)]);
+    assert_eq!(eval("[1 2 3 4 5 6] {.* -1=} ?"), []);
 }
 
 // test(
@@ -584,6 +617,12 @@ fn inc_array() {
 #[test]
 fn builtin_if() {
     assert_eq!(eval("1 2 3if"), [Num(2)]);
+    assert_eq!(eval("0 2 3if"), [Num(3)]);
+}
+
+fn builtin_if_block() {
+    // TODO: consider block case
+    assert_eq!(eval("0 2 {1.} if"), [Num(1), Num(1)]);
 }
 
 // test abs
