@@ -166,7 +166,10 @@ fn add_array() {
 
 #[test]
 fn add_block() {
-    assert_eq!(eval("{1}{2-}+"), [Block!([Num(1), Num(2), Op('-')])]);
+    assert_eq!(
+        eval("{1}{2-}+"),
+        [Block!([Num(1), Num(2), Var("-".to_string())])]
+    );
 }
 
 #[test]

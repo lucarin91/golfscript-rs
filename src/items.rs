@@ -1,3 +1,4 @@
+#![macro_use]
 extern crate itertools;
 
 use std::cmp::Ordering;
@@ -14,7 +15,6 @@ pub enum GSError {
 /// An `Item` can exist on the stack.
 #[derive(Clone, Debug, Eq, Hash, PartialEq, PartialOrd)]
 pub enum Item {
-    Op(char),
     Var(String),
     Assign(String),
     Num(i64),
@@ -23,11 +23,16 @@ pub enum Item {
     Block(Box<[Item]>),
 }
 
+macro_rules! Var {
+    ($x:expr) => {{
+        Item::Var($x.to_string())
+    }};
+}
+
 /// Allow `to_string` conversion for `Item`'s
 impl fmt::Display for Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Item::Op(x) => write!(f, "{}", x),
             Item::Var(x) => write!(f, "{}", x),
             Item::Num(ref x) => write!(f, "{}", x),
             Item::Str(ref x) => write!(f, "\"{}\"", x.replace("\n", "\\n")),

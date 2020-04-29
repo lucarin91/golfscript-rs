@@ -7,6 +7,7 @@ use std::str;
 mod bultins;
 mod items;
 mod lexer;
+
 pub use items::*;
 use lexer::lex;
 use Item::*;
@@ -35,20 +36,20 @@ impl Interpreter {
         // Set predefined variables
         variables.insert(
             "and".to_string(),
-            Block(Box::new([Num(1), Op('$'), Var("if".to_string())])),
+            Block(Box::new([Num(1), Var!("$"), Var!("if")])),
         );
         variables.insert(
             "or".to_string(),
-            Block(Box::new([Num(1), Op('$'), Op('\\'), Var("if".to_string())])),
+            Block(Box::new([Num(1), Var!("$"), Var!("\\"), Var!("if")])),
         );
         variables.insert(
             "xor".to_string(),
             Block(Box::new([
-                Op('\\'),
-                Op('!'),
-                Op('!'),
-                Block(Box::new([Op('!')])),
-                Op('*'),
+                Var!("\\"),
+                Var!("!"),
+                Var!("!"),
+                Block(Box::new([Var!("!")])),
+                Var!("*"),
             ])),
         );
         variables.insert("n".to_string(), Str("\n".to_string()));
@@ -60,10 +61,7 @@ impl Interpreter {
                 Var("print".to_string()),
             ])),
         );
-        variables.insert(
-            "p".to_string(),
-            Block(Box::new([Op('`'), Var("puts".to_string())])),
-        );
+        variables.insert("p".to_string(), Block(Box::new([Var!("`"), Var!("puts")])));
         variables
     }
 
@@ -77,45 +75,48 @@ impl Interpreter {
     pub fn exec_items(&mut self, items: &[Item]) -> Result<&[Item], GSError> {
         for item in items {
             match item {
-                // Can we restructure to allow for rebound variables?
-                Op('+') => self.add()?,
-                Op('-') => self.sub()?,
-                Op('!') => self.not()?,
-                Op('@') => self.at()?,
-                Op('$') => self.dollar()?,
-                Op('*') => self.mul()?,
-                Op('/') => self.div()?,
-                Op('%') => self.modulo()?,
-                Op('|') => self.or()?,
-                Op('&') => self.and()?,
-                Op('^') => self.xor()?,
-                Op('\\') => self.swap()?,
-                Op(';') => self.pop_discard()?,
-                Op('<') => self.lt()?,
-                Op('>') => self.gt()?,
-                Op('=') => self.eq()?,
-                Op('.') => self.dup()?,
-                Op('?') => self.qmark()?,
-                Op('(') => self.dec()?,
-                Op(')') => self.inc()?,
-                Op('[') => self.marker()?,
-                Op(']') => self.slice()?,
-                Op('~') => self.neg()?,
-                Op('`') => self.backtick()?,
-                Op(',') => self.array()?,
+                x @ Num(_) | x @ Str(_) | x @ Block(_) => self.push(x.clone()),
                 Assign(name) => self.assign(name.clone())?,
+                Var(name) if self.variables.contains_key(name) => {
+                    self.exec_variable(name.as_str())?
+                }
+                Var(name) if "+" == name.as_str() => self.add()?,
+                Var(name) if "-" == name.as_str() => self.sub()?,
+                Var(name) if "!" == name.as_str() => self.not()?,
+                Var(name) if "@" == name.as_str() => self.at()?,
+                Var(name) if "$" == name.as_str() => self.dollar()?,
+                Var(name) if "*" == name.as_str() => self.mul()?,
+                Var(name) if "/" == name.as_str() => self.div()?,
+                Var(name) if "%" == name.as_str() => self.modulo()?,
+                Var(name) if "|" == name.as_str() => self.or()?,
+                Var(name) if "&" == name.as_str() => self.and()?,
+                Var(name) if "^" == name.as_str() => self.xor()?,
+                Var(name) if "\\" == name.as_str() => self.swap()?,
+                Var(name) if ";" == name.as_str() => self.pop_discard()?,
+                Var(name) if "<" == name.as_str() => self.lt()?,
+                Var(name) if ">" == name.as_str() => self.gt()?,
+                Var(name) if "=" == name.as_str() => self.eq()?,
+                Var(name) if "." == name.as_str() => self.dup()?,
+                Var(name) if "?" == name.as_str() => self.qmark()?,
+                Var(name) if "(" == name.as_str() => self.dec()?,
+                Var(name) if ")" == name.as_str() => self.inc()?,
+                Var(name) if "[" == name.as_str() => self.marker()?,
+                Var(name) if "]" == name.as_str() => self.slice()?,
+                Var(name) if "~" == name.as_str() => self.neg()?,
+                Var(name) if "`" == name.as_str() => self.backtick()?,
+                Var(name) if "," == name.as_str() => self.array()?,
                 Var(name) if "abs" == name.as_str() => self.builtin_abs()?,
                 Var(name) if "if" == name.as_str() => self.builtin_if()?,
                 Var(name) if "rand" == name.as_str() => self.builtin_rand()?,
                 Var(name) if "print" == name.as_str() => self.builtin_print()?,
-                Var(name) => self.exec_variable(name.as_str())?,
-                x @ Num(_) | x @ Str(_) | x @ Block(_) => self.push(x.clone()),
-
+                Var(name) => {
+                    return Err(GSError::Runtime(format!("variable '{}' not founded", name)))
+                }
                 x => {
                     return Err(GSError::Runtime(format!(
                         "invalid token encountered: {:?}",
                         x
-                    )));
+                    )))
                 }
             }
         }

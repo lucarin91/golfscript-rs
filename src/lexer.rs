@@ -17,6 +17,16 @@ pub fn lex(input: &str) -> Result<Box<[Item]>, GSError> {
 }
 
 fn lex_variable(chars: &mut CharStream) -> String {
+    // Match either a single symbol or a variable name
+    match chars.peek() {
+        Some('+') | Some('-') | Some('!') | Some('@') | Some('$') | Some('*') | Some('/')
+        | Some('%') | Some('|') | Some('&') | Some('^') | Some('\\') | Some(';') | Some('<')
+        | Some('>') | Some('=') | Some('.') | Some('?') | Some('(') | Some(')') | Some('[')
+        | Some(']') | Some('~') | Some('`') | Some(',') => {
+            return chars.next().unwrap().to_string();
+        }
+        Some(_) | None => (),
+    }
     let mut string = String::new();
     loop {
         match chars.peek() {
@@ -27,7 +37,7 @@ fn lex_variable(chars: &mut CharStream) -> String {
             Some(_) | None => break,
         }
     }
-    return string;
+    string
 }
 
 fn lex_item(mut chars: &mut CharStream) -> Option<Result<Item, GSError>> {
@@ -136,7 +146,7 @@ fn lex_item(mut chars: &mut CharStream) -> Option<Result<Item, GSError>> {
                         _ => unreachable!(),
                     },
 
-                    _ => Item::Op('-'),
+                    _ => Var!("-"),
                 }
             }
 
@@ -156,16 +166,9 @@ fn lex_item(mut chars: &mut CharStream) -> Option<Result<Item, GSError>> {
                 Item::Assign(var)
             }
 
-            Some('+') | Some('-') | Some('!') | Some('@') | Some('$') | Some('*') | Some('/')
-            | Some('%') | Some('|') | Some('&') | Some('^') | Some('\\') | Some(';')
-            | Some('<') | Some('>') | Some('=') | Some('.') | Some('?') | Some('(') | Some(')')
-            | Some('[') | Some(']') | Some('~') | Some('`') | Some(',') => {
-                Item::Op(chars.next().unwrap())
-            }
-
             Some(_) => {
                 let var = lex_variable(chars);
-                // Varible could be empty?
+                // variable could be empty?
                 Item::Var(var)
             }
 
