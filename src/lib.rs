@@ -109,6 +109,7 @@ impl Interpreter {
                 Var(name) if "if" == name.as_str() => self.builtin_if()?,
                 Var(name) if "rand" == name.as_str() => self.builtin_rand()?,
                 Var(name) if "print" == name.as_str() => self.builtin_print()?,
+                Var(name) if "zip" == name.as_str() => self.builtin_zip()?,
                 Var(name) => {
                     return Err(GSError::Runtime(format!("variable '{}' not founded", name)))
                 }

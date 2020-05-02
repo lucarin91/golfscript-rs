@@ -793,6 +793,71 @@ impl Interpreter {
         Ok(())
     }
 
+    // zip
+    pub fn builtin_zip(&mut self) -> GSErr {
+        match self.pop()? {
+            Array(a) => {
+                let items = match a {
+                    // All the elements are Arrays
+                    a if a.iter().all(|el| match el {
+                        Array(_) => true,
+                        _ => false,
+                    }) =>
+                    {
+                        let mut res: Vec<Vec<Item>> = Vec::new();
+                        for b in a.into_vec().into_iter() {
+                            match b {
+                                Array(b) => {
+                                    for (j, x) in b.into_vec().into_iter().enumerate() {
+                                        if let Some(a) = res.get_mut(j) {
+                                            a.push(x);
+                                        } else {
+                                            res.push(vec![x]);
+                                        }
+                                    }
+                                }
+                                Str(_) => unimplemented!(),
+                                _ => unimplemented!(),
+                            }
+                        }
+                        res.into_iter()
+                            .map(|a| Array(a.into_boxed_slice()))
+                            .collect_vec()
+                    }
+                    // All the elements of are Str
+                    a if a.iter().all(|el| match el {
+                        Str(_) => true,
+                        _ => false,
+                    }) =>
+                    {
+                        let mut res: Vec<String> = Vec::new();
+                        for b in a.into_vec().into_iter() {
+                            match b {
+                                Str(b) => {
+                                    for (j, x) in b.chars().enumerate() {
+                                        if let Some(a) = res.get_mut(j) {
+                                            a.push(x);
+                                        } else {
+                                            res.push(x.to_string());
+                                        }
+                                    }
+                                }
+                                _ => unimplemented!(),
+                            }
+                        }
+                        res.into_iter().map(|a| Str(a)).collect_vec()
+                    }
+                    _ => unimplemented!(),
+                };
+
+                // push the resulting Array
+                self.push(Array(items.into_boxed_slice()));
+            }
+            _ => unimplemented!(),
+        }
+        Ok(())
+    }
+
     pub fn assign(&mut self, name: String) -> GSErr {
         let item = self.peek()?;
         self.add_variable(name, item);

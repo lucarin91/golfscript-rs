@@ -658,3 +658,24 @@ fn builtin_if_block() {
 fn builtin_abs() {
     assert_eq!(eval("-2abs"), [Num(2)]);
 }
+
+// test zip
+#[test]
+fn builtin_zip_array() {
+    assert_eq!(
+        eval("[[1 2 3][4 5 6][7 8 9]]zip"),
+        [Array!([
+            Array!([Num(1), Num(4), Num(7)]),
+            Array!([Num(2), Num(5), Num(8)]),
+            Array!([Num(3), Num(6), Num(9)])
+        ])]
+    );
+}
+
+#[test]
+fn builtin_zip_string() {
+    assert_eq!(
+        eval("[\"asdf\"\"1234\"]zip"),
+        [Array!([Str!("a1"), Str!("s2"), Str!("d3"), Str!("f4"),])]
+    );
+}
