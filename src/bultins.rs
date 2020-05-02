@@ -2,7 +2,7 @@ extern crate itertools;
 extern crate rand;
 
 use itertools::Itertools;
-use rand::distributions::{IndependentSample, Range};
+use rand::Rng;
 use std::{char, iter, mem};
 
 use items::{GSError, Item};
@@ -275,7 +275,7 @@ impl Interpreter {
                 self.push(Array(
                     x.into_vec()
                         .into_iter()
-                        .chunks_lazy(y as usize)
+                        .chunks(y as usize)
                         .into_iter()
                         .map(|c| Array(c.collect_vec().into_boxed_slice()))
                         .collect_vec()
@@ -767,15 +767,13 @@ impl Interpreter {
                 if x == 0 {
                     return Err(GSError::Runtime("invalid random range: [0, 0)".to_string()));
                 }
-
-                let range = if x < 0 {
-                    Range::new(x, 0)
-                } else {
-                    Range::new(0, x)
-                };
-
                 let mut rng = rand::thread_rng();
-                self.push(Num(range.ind_sample(&mut rng)))
+                let n = if x < 0 {
+                    rng.gen_range(x, 0)
+                } else {
+                    rng.gen_range(0, x)
+                };
+                self.push(Num(n));
             }
 
             x => panic!("invalid type for `rand`: {:?}", x),

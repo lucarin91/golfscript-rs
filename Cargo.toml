@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = ["tiehuis <marctiehuis@gmail.com>"]
 
 [dependencies]
-rand = "0.3"
-itertools = "0.4.13"
+rand = "0.7"
+itertools = "0.9"
 copperline = "0.3.0"
 
 [lib]

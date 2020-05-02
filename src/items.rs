@@ -38,12 +38,12 @@ impl fmt::Display for Item {
             Item::Str(ref x) => write!(f, "\"{}\"", x.replace("\n", "\\n")),
             Item::Array(ref x) => {
                 write!(f, "[")?;
-                write!(f, "{}", x.iter().format_default(" "))?;
+                write!(f, "{}", x.iter().join(" "))?;
                 write!(f, "]")
             }
             Item::Block(ref x) => {
                 write!(f, "{{")?;
-                write!(f, "{}", x.iter().format_default(" "))?;
+                write!(f, "{}", x.iter().join(" "))?;
                 write!(f, "}}")
             }
             Item::Assign(x) => write!(f, ":{}", x),
