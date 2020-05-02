@@ -107,8 +107,7 @@ impl Item {
                         if let Item::Num(val) = item {
                             char::from_u32(val as u32).unwrap().to_string()
                         } else {
-                            // TODO: can the clone be removed?
-                            if let Item::Str(val) = item.clone().upcast_to_string() {
+                            if let Item::Str(val) = item.upcast_to_string() {
                                 val
                             } else {
                                 panic!("upcast_to_string only accepts Num, Array, String")

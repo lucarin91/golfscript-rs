@@ -514,7 +514,6 @@ impl Interpreter {
                 let y_len = y.len() as i64;
                 self.push(Str(y
                     .chars()
-                    .into_iter()
                     .take(if x > 0 { x } else { y_len + x } as usize)
                     .collect()));
             }
@@ -536,7 +535,6 @@ impl Interpreter {
                 let y_len = y.len() as i64;
                 self.push(Str(y
                     .chars()
-                    .into_iter()
                     .skip(if x > 0 { x } else { y_len + x } as usize)
                     .collect()));
             }
@@ -755,7 +753,7 @@ impl Interpreter {
             (Block(y), _) if !check => {
                 self.exec_items(&y)?;
             }
-            (y @ _, x @ _) => self.push(if check { x } else { y }),
+            (y, x) => self.push(if check { x } else { y }),
         }
         Ok(())
     }
@@ -845,7 +843,7 @@ impl Interpreter {
                                 _ => unimplemented!(),
                             }
                         }
-                        res.into_iter().map(|a| Str(a)).collect_vec()
+                        res.into_iter().map(Str).collect_vec()
                     }
                     _ => unimplemented!(),
                 };
