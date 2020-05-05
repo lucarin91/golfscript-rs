@@ -679,3 +679,16 @@ fn builtin_zip_string() {
         [Array!([Str!("a1"), Str!("s2"), Str!("d3"), Str!("f4"),])]
     );
 }
+
+#[test]
+fn builtin_base_from() {
+    assert_eq!(eval("[\"1\" \"1\" \"0\"] 2 base"), [Num(6)]);
+}
+
+#[test]
+fn builtin_base_to() {
+    assert_eq!(
+        eval("6 2 base"),
+        [Array!([Str!("1"), Str!("1"), Str!("0")])]
+    );
+}

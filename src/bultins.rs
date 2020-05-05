@@ -856,6 +856,35 @@ impl Interpreter {
         Ok(())
     }
 
+    pub fn builtin_base(&mut self) -> GSErr {
+        match self.pop2()? {
+            (Num(radix), Array(x)) => {
+                // converto x from `radix` base
+                let x = x
+                    .into_vec()
+                    .into_iter()
+                    .map(|el| match el.upcast_to_string() {
+                        Str(x) => x,
+                        _ => unimplemented!(),
+                    })
+                    .join("");
+                self.push(Num(i64::from_str_radix(&x, radix as u32)?));
+            }
+            (Num(radix), Num(x)) => {
+                // converto x to `radix` base
+                self.push(Array(
+                    to_string_num(x, radix as u32)?
+                        .chars()
+                        .map(|c| Str(c.to_string()))
+                        .collect_vec()
+                        .into_boxed_slice(),
+                ))
+            }
+            _ => unimplemented!(),
+        }
+        Ok(())
+    }
+
     pub fn assign(&mut self, name: String) -> GSErr {
         let item = self.peek()?;
         self.add_variable(name, item);
@@ -874,4 +903,33 @@ impl Interpreter {
             Err(err) => Err(err),
         }
     }
+}
+
+/// convert number in custom base number string
+fn to_string_num(mut num: i64, base: u32) -> Result<String, String> {
+    if base < 2 || base > 33 {
+        return Err(String::from("invalid base"));
+    }
+
+    let mut str_num = String::new();
+    let base = base as i64;
+    let mut count = 0;
+
+    while num > 0 {
+        let radix_mask = (base).pow(count);
+        let digit = ((num / radix_mask) % base) as u8;
+
+        let ch = if digit >= 10 {
+            (b'A' + (digit - 10)) as char
+        } else {
+            (b'0' + digit) as char
+        };
+
+        str_num.push(ch);
+
+        count += 1;
+        num -= digit as i64 * radix_mask;
+    }
+
+    Ok(str_num.chars().rev().collect())
 }

@@ -1,15 +1,27 @@
 #![macro_use]
 extern crate itertools;
 
-use std::cmp::Ordering;
-use std::{char, fmt};
-
 use itertools::Itertools;
+use std::cmp::Ordering;
+use std::num::ParseIntError;
+use std::{char, fmt};
 
 #[derive(Debug, PartialEq)]
 pub enum GSError {
     Parse(String),
     Runtime(String),
+}
+
+impl From<ParseIntError> for GSError {
+    fn from(e: ParseIntError) -> Self {
+        GSError::Runtime(format!("{}", e))
+    }
+}
+
+impl From<String> for GSError {
+    fn from(e: String) -> Self {
+        GSError::Runtime(e)
+    }
 }
 
 /// An `Item` can exist on the stack.
@@ -106,12 +118,10 @@ impl Item {
                     .map(|item| {
                         if let Item::Num(val) = item {
                             char::from_u32(val as u32).unwrap().to_string()
+                        } else if let Item::Str(val) = item.upcast_to_string() {
+                            val
                         } else {
-                            if let Item::Str(val) = item.upcast_to_string() {
-                                val
-                            } else {
-                                panic!("upcast_to_string only accepts Num, Array, String")
-                            }
+                            panic!("upcast_to_string only accepts Num, Array, String")
                         }
                     })
                     .join(""),

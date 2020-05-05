@@ -72,6 +72,7 @@ impl Interpreter {
     }
 
     /// Execute a sequence of items, returning the stack state after execution
+    // TODO: split this function
     pub fn exec_items(&mut self, items: &[Item]) -> Result<&[Item], GSError> {
         for item in items {
             match item {
@@ -110,6 +111,7 @@ impl Interpreter {
                 Var(name) if "rand" == name.as_str() => self.builtin_rand()?,
                 Var(name) if "print" == name.as_str() => self.builtin_print()?,
                 Var(name) if "zip" == name.as_str() => self.builtin_zip()?,
+                Var(name) if "base" == name.as_str() => self.builtin_base()?,
                 Var(name) => {
                     return Err(GSError::Runtime(format!("variable '{}' not founded", name)))
                 }
